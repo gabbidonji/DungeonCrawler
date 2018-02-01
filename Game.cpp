@@ -258,6 +258,7 @@ class Player
   bool guarded;
 
 public:
+  bool playerAlive();
   int resetStatus();
   int running();
   int defend();
@@ -266,6 +267,10 @@ public:
   Player(int hp): hitPoints(hp), maxHitPoints(hp), vulnerable(0), dodging(0), guarded(0){}
   bool takeDamage(int damage); //1 if alive, 0 if dead;
 };
+
+bool Player::playerAlive(){
+  return this -> hitPoints > 0;
+}
 
 bool Player::takeDamage(int damage){
   int dodged = 10 - (dodging*rand()%10);
@@ -463,16 +468,16 @@ class Battle
   bool lastTurn; //1 if player, 0 if enemy
 public:
   Battle(Enemy enemy, Player player): player(player), enemy(enemy), lastTurn(0){}
-  bool execute(); //1 if win, 0 if loss
-  static Battle createBattle(Player &player);
+  Player execute();
+  static Battle createBattle(Player player);
 };
 
-Battle Battle::createBattle(Player &player){
+Battle Battle::createBattle(Player player){
   Enemy enemy = Enemy::generateEnemy();
   return Battle(enemy, player);
 }
 
-bool Battle::execute(){
+Player Battle::execute(){
   std::cout << "\nYou were discovered by ";
   if(this->enemy.isType(ORC) || this->enemy.isType(OGRE) || this->enemy.isType(UNDEAD)){
     std::cout << "an ";
@@ -500,6 +505,9 @@ bool Battle::execute(){
           bool enemyAlive;
           switch(attackType){
             int attackType;
+            case 1:
+            enemyAlive = this->enemy.takeDamage(SLASH);
+            break;
             case 2:
             enemyAlive = this->enemy.takeDamage(SHOOT);
             break;
@@ -515,13 +523,10 @@ bool Battle::execute(){
             case 6:
             enemyAlive = this->enemy.takeDamage(PLANT);
             break;
-            default:
-            enemyAlive = this->enemy.takeDamage(SLASH);
-            break;
           }
           if(!enemyAlive){
             std::cout << "You defeated the " << this->enemy.getName() << "!\n\n";
-            return 1;
+            return player;
           }
           break;
         }
@@ -529,18 +534,18 @@ bool Battle::execute(){
         std::cout << "\n";
         player.dodge();
         break;
+        case 3:
+        std::cout << "\n";
+        player.defend();
+        break;
         case 4:
         std::cout << "\n";
         player.running();
         if(rand()%2){
           std::cout << "You escaped!\n\n";
-          return 1;
+          return player;
         }
         std::cout << "You let your guard down trying to escape!\n";
-        break;
-        default:
-        std::cout << "\n";
-        player.defend();
         break;
       }
       this -> lastTurn = 1;
@@ -554,12 +559,12 @@ bool Battle::execute(){
       bool playerAlive = player.takeDamage(enemy.calculateDamage());
       this -> lastTurn = 0;
       if(!playerAlive){
-        return 0;
+        return player;
       }
       enemyTime = enemyTime + (30 - enemy.getSpeed());
     }
   }
-  return 1;
+  return player;
 }
 
 int main(){
@@ -604,10 +609,10 @@ return 0;
       std::cin >> move;
       goalReached = map.movePlayer(move);
       int randomEncounter = ((rand()%20) + 1);
-      std::cout << "\nrand: " << randomEncounter << "\n";
       if(randomEncounter > 17){
         Battle battle = Battle::createBattle(player);
-        if(!battle.execute()){
+        player = battle.execute();
+        if(!player.playerAlive()){
           std::cout << "\nYou made it " << floors << " floors down.\n\nGAME OVER\n\n";
           return 0;
         }
